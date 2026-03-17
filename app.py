@@ -1,6 +1,7 @@
 import requests
 import os
 import subprocess
+import imageio_ffmpeg
 from flask import Flask, request, jsonify, send_file, render_template
 from dotenv import load_dotenv
 
@@ -11,10 +12,13 @@ app = Flask(__name__)
 API_URL = "https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3"
 API_KEY = os.getenv("HF_API_KEY")
 
+# Get the bundled ffmpeg binary path
+FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
+
 
 def extract_audio(video_path, audio_path):
     subprocess.run([
-        "ffmpeg", "-i", video_path,
+        FFMPEG, "-i", video_path,
         "-q:a", "0", "-map", "a",
         audio_path, "-y"
     ])
@@ -64,7 +68,7 @@ def make_srt(words, group_size=5, position="bottom"):
 
 def burn_captions(video_path, srt_path, output_path):
     subprocess.run([
-        "ffmpeg", "-i", video_path,
+        FFMPEG, "-i", video_path,
         "-vf", f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=14,Bold=1,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,Outline=2,Shadow=1'",
         output_path, "-y"
     ])
@@ -112,4 +116,5 @@ def get_video():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+

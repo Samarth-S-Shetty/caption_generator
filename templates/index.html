@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CAPGEN — AI Caption Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #080808;
+      --surface: #111111;
+      --border: #222222;
+      --accent: #E8FF00;
+      --accent2: #FF3C3C;
+      --text: #F0F0F0;
+      --muted: #555555;
+      --card: #141414;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.4;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(232,255,0,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(232,255,0,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    header {
+      padding: 48px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 4px; color: var(--accent); }
+    .badge { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); border: 1px solid var(--border); padding: 4px 10px; letter-spacing: 2px; }
+
+    .hero { padding: 80px 0 60px; }
+
+    .hero-tag {
+      font-family: 'Space Mono', monospace; font-size: 11px; color: var(--accent);
+      letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .hero-tag::before { content: ''; width: 24px; height: 1px; background: var(--accent); }
+
+    h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(72px, 12vw, 140px); line-height: 0.9; letter-spacing: -2px; margin-bottom: 24px; }
+    h1 span { color: var(--accent); display: block; }
+    .hero-sub { font-size: 16px; color: var(--muted); font-weight: 300; max-width: 400px; line-height: 1.7; }
+
+    .main-layout { display: grid; grid-template-columns: 1fr; gap: 24px; transition: grid-template-columns 0.4s ease; }
+    .main-layout.with-preview { grid-template-columns: 1fr 1fr; }
+
+    .card { background: var(--card); border: 1px solid var(--border); padding: 40px; position: relative; overflow: hidden; }
+    .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), transparent); }
+
+    .section-label {
+      font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 3px;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 28px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .section-label span {
+      width: 20px; height: 20px; background: var(--accent); color: var(--bg);
+      font-size: 10px; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; flex-shrink: 0;
+    }
+
+    .dropzone {
+      border: 1.5px dashed var(--border); padding: 48px 32px; text-align: center;
+      cursor: pointer; transition: all 0.2s; position: relative; background: var(--bg);
+    }
+    .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: rgba(232,255,0,0.03); }
+    .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .drop-icon { font-size: 40px; margin-bottom: 12px; display: block; opacity: 0.4; }
+    .drop-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 2px; margin-bottom: 6px; }
+    .drop-sub { font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+    .file-selected { display: none; align-items: center; gap: 14px; padding: 16px 20px; background: rgba(232,255,0,0.05); border: 1px solid rgba(232,255,0,0.2); margin-top: 14px; }
+    .file-selected.visible { display: flex; }
+    .file-name { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--accent); margin-bottom: 2px; word-break: break-all; }
+    .file-size { font-size: 11px; color: var(--muted); }
+    .file-info { flex: 1; }
+    .remove-file { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; transition: color 0.2s; }
+    .remove-file:hover { color: var(--accent2); }
+
+    .settings-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 24px; }
+    .setting-item label { display: block; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+    .setting-item select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 13px; appearance: none; cursor: pointer; transition: border-color 0.2s; }
+    .setting-item select:focus { outline: none; border-color: var(--accent); }
+
+    .btn-generate { width: 100%; background: var(--accent); color: var(--bg); border: none; padding: 18px; font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 4px; cursor: pointer; margin-top: 24px; transition: all 0.2s; }
+    .btn-generate:hover { background: #fff; transform: translateY(-1px); }
+    .btn-generate:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; }
+
+    .error-msg { display: none; background: rgba(255,60,60,0.08); border: 1px solid rgba(255,60,60,0.3); padding: 14px 18px; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--accent2); margin-top: 14px; }
+    .error-msg.visible { display: block; }
+
+    /* PREVIEW */
+    .preview-panel { display: none; flex-direction: column; }
+    .preview-panel.visible { display: flex; }
+    .preview-panel .card { flex: 1; display: flex; flex-direction: column; }
+    .preview-panel .card::before { background: linear-gradient(90deg, #00d4ff, transparent); }
+
+    .video-wrap { position: relative; background: #000; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 300px; overflow: hidden; }
+    #previewVideo { max-width: 100%; max-height: 420px; display: block; }
+
+    #captionOverlay { position: absolute; left: 0; right: 0; bottom: 32px; text-align: center; padding: 0 20px; pointer-events: none; }
+    #captionOverlay.top { bottom: auto; top: 32px; }
+    #captionOverlay.center { bottom: auto; top: 50%; transform: translateY(-50%); }
+
+    #captionText {
+      display: inline-block;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(18px, 3vw, 28px);
+      letter-spacing: 1px;
+      color: #fff;
+      text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 3px 8px rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.4);
+      padding: 6px 14px;
+      min-height: 36px;
+    }
+
+    /* PROGRESS */
+    .progress-card { display: none; background: var(--card); border: 1px solid var(--border); padding: 40px; margin-bottom: 24px; position: relative; overflow: hidden; }
+    .progress-card.visible { display: block; }
+    .progress-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent2), transparent); }
+
+    .progress-steps { display: flex; flex-direction: column; gap: 14px; }
+    .step { display: flex; align-items: center; gap: 14px; opacity: 0.3; transition: opacity 0.4s; }
+    .step.active { opacity: 1; }
+    .step.done { opacity: 0.6; }
+    .step-dot { width: 8px; height: 8px; border: 1.5px solid var(--muted); border-radius: 50%; flex-shrink: 0; transition: all 0.3s; }
+    .step.active .step-dot { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 12px var(--accent); animation: pulse 1s infinite; }
+    .step.done .step-dot { border-color: var(--accent); background: var(--accent); }
+    @keyframes pulse { 0%, 100% { box-shadow: 0 0 8px var(--accent); } 50% { box-shadow: 0 0 20px var(--accent); } }
+    .step-text { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 1px; }
+    .step.active .step-text { color: var(--accent); }
+    .step.done .step-text { color: var(--muted); text-decoration: line-through; }
+    .step-check { margin-left: auto; font-size: 13px; display: none; }
+    .step.done .step-check { display: block; color: var(--accent); }
+    .progress-bar-wrap { margin-top: 28px; height: 2px; background: var(--border); overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s ease; }
+    .progress-label { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 10px; letter-spacing: 2px; }
+
+    /* RESULT */
+    .result-card { display: none; background: var(--card); border: 1px solid rgba(232,255,0,0.3); padding: 40px; margin-bottom: 24px; position: relative; overflow: hidden; animation: slideUp 0.4s ease; }
+    .result-card.visible { display: block; }
+    .result-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent); }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 44px; letter-spacing: 2px; color: var(--accent); margin-bottom: 6px; }
+    .result-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+
+    .btn-download { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: var(--bg); text-decoration: none; padding: 14px 28px; font-family: 'Bebas Neue', sans-serif; font-size: 17px; letter-spacing: 3px; transition: all 0.2s; cursor: pointer; border: none; }
+    .btn-download:hover { background: #fff; transform: translateY(-2px); }
+
+    .btn-reset { display: inline-flex; align-items: center; gap: 8px; background: none; color: var(--muted); border: 1px solid var(--border); padding: 14px 28px; font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 2px; cursor: pointer; margin-left: 10px; transition: all 0.2s; text-transform: uppercase; }
+    .btn-reset:hover { color: var(--text); border-color: var(--muted); }
+
+    footer { padding: 48px 0; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; margin-top: 48px; }
+    .footer-text { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 2px; }
+    .footer-text span { color: var(--accent); }
+    .deco-num { position: absolute; right: 32px; bottom: 16px; font-family: 'Bebas Neue', sans-serif; font-size: 100px; color: rgba(255,255,255,0.02); line-height: 1; pointer-events: none; user-select: none; }
+
+    @media (max-width: 700px) {
+      .main-layout.with-preview { grid-template-columns: 1fr; }
+      .card, .progress-card, .result-card { padding: 24px 20px; }
+      .settings-row { grid-template-columns: 1fr; }
+      h1 { font-size: 64px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo">CAPGEN</div>
+    <div class="badge">AI — Powered</div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-tag">Automatic Caption Generator</div>
+    <h1>DROP.<span>CAPTION.</span>DONE.</h1>
+    <p class="hero-sub">Upload any video. AI transcribes word-by-word and burns perfectly synced captions into your footage.</p>
+  </section>
+
+  <div class="main-layout" id="mainLayout">
+
+    <!-- UPLOAD -->
+    <div>
+      <div class="card" id="uploadCard">
+        <div class="section-label"><span>01</span> Upload Your Video</div>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="videoInput" accept="video/*" />
+          <span class="drop-icon">⬛</span>
+          <div class="drop-title">DROP VIDEO HERE</div>
+          <div class="drop-sub">MP4, MOV, AVI — any format works</div>
+        </div>
+        <div class="file-selected" id="fileSelected">
+          <span style="font-size:20px">🎬</span>
+          <div class="file-info">
+            <div class="file-name" id="fileName">—</div>
+            <div class="file-size" id="fileSize">—</div>
+          </div>
+          <button class="remove-file" id="removeFile">✕</button>
+        </div>
+        <div class="settings-row">
+          <div class="setting-item">
+            <label>Words per caption</label>
+            <select id="groupSize">
+              <option value="4">4 words — Fast cuts</option>
+              <option value="5" selected>5 words — Balanced</option>
+              <option value="7">7 words — Longer lines</option>
+            </select>
+          </div>
+          <div class="setting-item">
+            <label>Caption position</label>
+            <select id="captionPos">
+              <option value="bottom">Bottom</option>
+              <option value="center">Center</option>
+              <option value="top">Top</option>
+            </select>
+          </div>
+        </div>
+        <div class="error-msg" id="errorMsg">⚠ Something went wrong. Make sure your Flask server is running.</div>
+        <button class="btn-generate" id="generateBtn" disabled>GENERATE CAPTIONS →</button>
+        <div class="deco-num">01</div>
+      </div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="preview-panel" id="previewPanel">
+      <div class="card">
+        <div class="section-label"><span>👁</span> Live Preview</div>
+        <div class="video-wrap">
+          <video id="previewVideo" controls></video>
+          <div id="captionOverlay">
+            <div id="captionText"></div>
+          </div>
+        </div>
+        <div style="margin-top:12px; font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:2px;">
+          CAPTIONS OVERLAY AS VIDEO PLAYS
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-card" id="progressCard">
+    <div class="section-label"><span>02</span> Processing</div>
+    <div class="progress-steps">
+      <div class="step" id="step1"><div class="step-dot"></div><div class="step-text">UPLOADING VIDEO</div><div class="step-check">✓</div></div>
+      <div class="step" id="step2"><div class="step-dot"></div><div class="step-text">EXTRACTING AUDIO</div><div class="step-check">✓</div></div>
+      <div class="step" id="step3"><div class="step-dot"></div><div class="step-text">AI TRANSCRIBING SPEECH</div><div class="step-check">✓</div></div>
+      <div class="step" id="step4"><div class="step-dot"></div><div class="step-text">GENERATING CAPTIONS</div><div class="step-check">✓</div></div>
+      <div class="step" id="step5"><div class="step-dot"></div><div class="step-text">BURNING INTO VIDEO</div><div class="step-check">✓</div></div>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill"></div></div>
+    <div class="progress-label" id="progressLabel">INITIALIZING...</div>
+    <div class="deco-num">02</div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="result-card" id="resultCard">
+    <div class="section-label"><span>03</span> Done</div>
+    <div class="result-title">CAPTIONS READY.</div>
+    <div class="result-sub">Captions are burned in and perfectly synced. Preview plays with overlaid captions.</div>
+    <button class="btn-download" id="downloadBtn">⬇ DOWNLOAD VIDEO</button>
+    <button class="btn-reset" id="resetBtn">↺ NEW VIDEO</button>
+    <div class="deco-num">03</div>
+  </div>
+
+  <footer>
+    <div class="footer-text">CAPGEN — Built with <span>Whisper AI</span> + FFmpeg</div>
+    <div class="footer-text">FREE. OPEN. YOURS.</div>
+  </footer>
+
+</div>
+
+<script>
+  const videoInput = document.getElementById('videoInput');
+  const dropzone = document.getElementById('dropzone');
+  const fileSelected = document.getElementById('fileSelected');
+  const fileName = document.getElementById('fileName');
+  const fileSize = document.getElementById('fileSize');
+  const removeFile = document.getElementById('removeFile');
+  const generateBtn = document.getElementById('generateBtn');
+  const uploadCard = document.getElementById('uploadCard');
+  const progressCard = document.getElementById('progressCard');
+  const resultCard = document.getElementById('resultCard');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const errorMsg = document.getElementById('errorMsg');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const previewPanel = document.getElementById('previewPanel');
+  const mainLayout = document.getElementById('mainLayout');
+  const previewVideo = document.getElementById('previewVideo');
+  const captionOverlay = document.getElementById('captionOverlay');
+  const captionText = document.getElementById('captionText');
+
+  let selectedFile = null;
+  let captions = [];
+  let downloadUrl = null;
+
+  // Drag and drop
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
+
+  videoInput.addEventListener('change', () => {
+    if (videoInput.files[0]) setFile(videoInput.files[0]);
+  });
+
+  function setFile(file) {
+    selectedFile = file;
+    fileName.textContent = file.name;
+    fileSize.textContent = (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+    fileSelected.classList.add('visible');
+    generateBtn.disabled = false;
+    errorMsg.classList.remove('visible');
+    const url = URL.createObjectURL(file);
+    previewVideo.src = url;
+    previewPanel.classList.add('visible');
+    mainLayout.classList.add('with-preview');
+  }
+
+  removeFile.addEventListener('click', () => {
+    selectedFile = null;
+    videoInput.value = '';
+    fileSelected.classList.remove('visible');
+    generateBtn.disabled = true;
+    previewPanel.classList.remove('visible');
+    mainLayout.classList.remove('with-preview');
+    previewVideo.src = '';
+    captionText.textContent = '';
+    captions = [];
+  });
+
+  function parseSrt(srt) {
+  const blocks = srt.trim().split(/\n\s*\n/);
+  return blocks.map(block => {
+    const lines = block.trim().split('\n');
+    if (lines.length < 3) return null;
+
+    // Skip the index number line
+    const timeLine = lines[1];
+    if (!timeLine.includes('-->')) return null;
+
+    const times = timeLine.split('-->');
+    const text = lines.slice(2).join(' ')
+      .replace(/\{[^}]+\}/g, '')   // remove {tags}
+      .replace(/<[^>]+>/g, '')      // remove <tags>
+      .trim();
+
+    return {
+      start: srtTimeToSeconds(times[0].trim()),
+      end: srtTimeToSeconds(times[1].trim()),
+      text: text
+    };
+  }).filter(Boolean);
+}
+
+  function srtTimeToSeconds(t) {
+    const [hms, ms] = t.trim().split(',');
+    const [h, m, s] = hms.split(':').map(Number);
+    return h * 3600 + m * 60 + s + Number(ms) / 1000;
+  }
+
+  previewVideo.addEventListener('timeupdate', () => {
+    if (!captions.length) return;
+    const t = previewVideo.currentTime;
+    const current = captions.find(c => t >= c.start && t <= c.end);
+    captionText.textContent = current ? current.text : '';
+  });
+
+  const steps = ['step1','step2','step3','step4','step5'];
+  const stepDurations = [800, 1200, 8000, 1500, 3000];
+  const stepLabels = ['UPLOADING...', 'EXTRACTING AUDIO...', 'AI IS THINKING...', 'BUILDING CAPTIONS...', 'BURNING INTO VIDEO...'];
+
+  function animateSteps() {
+    steps.forEach(s => document.getElementById(s).classList.remove('active','done'));
+    const total = stepDurations.reduce((a, b) => a + b, 0);
+    let elapsed = 0;
+    stepDurations.forEach((dur, i) => {
+      const delay = stepDurations.slice(0, i).reduce((a,b) => a+b, 0);
+      setTimeout(() => {
+        if (i > 0) {
+          document.getElementById(steps[i-1]).classList.remove('active');
+          document.getElementById(steps[i-1]).classList.add('done');
+        }
+        document.getElementById(steps[i]).classList.add('active');
+        progressLabel.textContent = stepLabels[i];
+        elapsed += dur;
+        progressFill.style.width = Math.min((elapsed / total) * 100, 90) + '%';
+      }, delay);
+    });
+  }
+
+  generateBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+
+    uploadCard.style.opacity = '0.5';
+    uploadCard.style.pointerEvents = 'none';
+    progressCard.classList.add('visible');
+    animateSteps();
+
+    const formData = new FormData();
+    formData.append('video', selectedFile);
+    formData.append('group_size', document.getElementById('groupSize').value);
+    formData.append('position', document.getElementById('captionPos').value);
+
+    try {
+      const response = await fetch('/generate', { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Server error');
+
+      // Mark all done
+      steps.forEach(s => {
+        document.getElementById(s).classList.remove('active');
+        document.getElementById(s).classList.add('done');
+      });
+      progressFill.style.width = '100%';
+      progressLabel.textContent = 'COMPLETE!';
+
+      // Load captions for preview overlay
+      const srtRes = await fetch('/get-srt');
+      const srtText = await srtRes.text();
+      captions = parseSrt(srtText);
+
+      // Load burned video into preview
+      const videoRes = await fetch('/get-video');
+      const blob = await videoRes.blob();
+      downloadUrl = URL.createObjectURL(blob);
+      previewVideo.src = downloadUrl;
+      previewVideo.load();
+      captions = [];
+
+      setTimeout(() => {
+        progressCard.classList.remove('visible');
+        uploadCard.style.opacity = '1';
+        uploadCard.style.pointerEvents = 'auto';
+        resultCard.classList.add('visible');
+      }, 800);
+
+    } catch (err) {
+      progressCard.classList.remove('visible');
+      uploadCard.style.opacity = '1';
+      uploadCard.style.pointerEvents = 'auto';
+      errorMsg.classList.add('visible');
+    }
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!downloadUrl) return;
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = 'captioned_' + (selectedFile ? selectedFile.name : 'video.mp4');
+    a.click();
+  });
+
+  resetBtn.addEventListener('click', () => {
+    selectedFile = null;
+    captions = [];
+    downloadUrl = null;
+    videoInput.value = '';
+    fileSelected.classList.remove('visible');
+    generateBtn.disabled = true;
+    resultCard.classList.remove('visible');
+    previewPanel.classList.remove('visible');
+    mainLayout.classList.remove('with-preview');
+    previewVideo.src = '';
+    captionText.textContent = '';
+    errorMsg.classList.remove('visible');
+    progressFill.style.width = '0%';
+    steps.forEach(s => document.getElementById(s).classList.remove('active', 'done'));
+  });
+
+  document.getElementById('captionPos').addEventListener('change', (e) => {
+    captionOverlay.className = '';
+    captionOverlay.id = 'captionOverlay';
+    if (e.target.value !== 'bottom') captionOverlay.classList.add(e.target.value);
+  });
+</script>
+</body>
+</html>

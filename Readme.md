@@ -22,7 +22,7 @@
 
 CAPGEN is a full-stack AI web application that automatically generates and burns captions into videos. Users upload a video, the AI transcribes the speech with word-level timestamps, and FFmpeg burns perfectly synced captions directly into the video frames — no manual editing required.
 
-Built from scratch in one day as a learning project. Zero to fully deployed AI SaaS product.
+Built from scratch  as a learning project. Zero to fully deployed AI SaaS product.
 
 ---
 

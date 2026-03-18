@@ -173,7 +173,7 @@
     .step.done .step-check { display: block; color: var(--accent); }
     .progress-bar-wrap { margin-top: 28px; height: 2px; background: var(--border); overflow: hidden; }
     .progress-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s ease; }
-    .progress-label { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 10px; letter-spacing: 2px; }
+    .progress-label { font-family: 'Space Mono', monospace; font-size: 20px; color: var(--accent); margin-top: 10px; letter-spacing: 2px; font-weight: 700; }
 
     /* RESULT */
     .result-card { display: none; background: var(--card); border: 1px solid rgba(232,255,0,0.3); padding: 40px; margin-bottom: 24px; position: relative; overflow: hidden; animation: slideUp 0.4s ease; }
@@ -213,7 +213,7 @@
   <section class="hero">
     <div class="hero-tag">Automatic Caption Generator</div>
     <h1>DROP.<span>CAPTION.</span>DONE.</h1>
-    <p class="hero-sub">Upload any video. AI transcribes word-by-word and burns perfectly synced captions into your footage.</p>
+    <p class="hero-sub">Upload any video. AI transcribes word-by-word and burns perfectly synced captions into your footage. <span style="color:var(--accent);font-size:20px; font-family:'Bebas Neue',sans-serif; letter-spacing:2px; display:block; margin-top:8px;font-weight: bold;">Free tier takes 2-5 min — worth the wait!</span></p>
   </section>
 
   <div class="main-layout" id="mainLayout">
@@ -414,7 +414,13 @@
 
   const steps = ['step1','step2','step3','step4','step5'];
   const stepDurations = [800, 1200, 8000, 1500, 3000];
-  const stepLabels = ['UPLOADING...', 'EXTRACTING AUDIO...', 'AI IS THINKING...', 'BUILDING CAPTIONS...', 'BURNING INTO VIDEO...'];
+  const stepLabels = [
+  'UPLOADING...', 
+  'EXTRACTING AUDIO...', 
+  'AI TRANSCRIBING — USUALLY TAKES 10 SEC...', 
+  'BUILDING CAPTIONS...', 
+  'BURNING INTO VIDEO — THIS TAKES 2-5 MIN ON FREE SERVER, PLEASE WAIT...'
+];
 
   function animateSteps() {
     steps.forEach(s => document.getElementById(s).classList.remove('active','done'));

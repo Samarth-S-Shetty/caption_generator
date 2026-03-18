@@ -120,6 +120,16 @@ def get_srt():
 def get_video():
     return send_file("output.mp4", as_attachment=True, download_name="captioned_video.mp4")
 
+@app.route("/sitemap.xml")
+def sitemap():
+    
+    return '''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://caption-generator-1-2qhe.onrender.com/</loc>
+    <priority>1.0</priority>
+  </url>
+</urlset>''', 200, {'Content-Type': 'application/xml'}
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

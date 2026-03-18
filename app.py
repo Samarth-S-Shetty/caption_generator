@@ -4,16 +4,15 @@ import subprocess
 import imageio_ffmpeg
 from flask import Flask, request, jsonify, send_file, render_template
 from dotenv import load_dotenv
+from groq import Groq
 
 load_dotenv()
 
 app = Flask(__name__)
 
-API_URL = "https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3"
-API_KEY = os.getenv("HF_API_KEY")
-
-# Get the bundled ffmpeg binary path
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
+groq_client = Groq(api_key=GROQ_API_KEY)
 
 
 def extract_audio(video_path, audio_path):
@@ -25,15 +24,22 @@ def extract_audio(video_path, audio_path):
 
 
 def transcribe(audio_path):
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "audio/mpeg"
-    }
-    params = {"return_timestamps": "word"}
     with open(audio_path, "rb") as f:
-        audio_data = f.read()
-    response = requests.post(API_URL, headers=headers, params=params, data=audio_data)
-    return response.json()["chunks"]
+        transcription = groq_client.audio.transcriptions.create(
+            file=("audio.mp3", f),
+            model="whisper-large-v3",
+            response_format="verbose_json",
+            timestamp_granularities=["word"]
+        )
+
+    words = []
+    for word in transcription.words:
+        
+        words.append({
+            "text": " " + word["word"],
+            "timestamp": [word["start"], word["end"]]
+        })
+    return words
 
 
 def make_srt(words, group_size=5, position="bottom"):
@@ -90,7 +96,7 @@ def generate():
     print("Extracting audio...")
     extract_audio("input_video.mp4", "audio.mp3")
 
-    print("Transcribing...")
+    print("Transcribing with Groq...")
     words = transcribe("audio.mp3")
 
     print("Generating .srt...")
@@ -117,4 +123,3 @@ def get_video():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
